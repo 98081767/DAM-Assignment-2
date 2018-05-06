@@ -43,6 +43,7 @@ tnx$date = as.Date(tnx$date, format="%d/%m/%y")
 #Task 1 - aggregate data
 #--------------------------------------
 tnx.agg = aggregate(formula = monthly_amount ~ date:industry:location, data = tnx, FUN = mean)
+write.csv(tnx.agg, "monthlyAggregate.csv")
 head(tnx.agg, 20)
 str(tnx.agg)
 
@@ -56,6 +57,7 @@ library(scales)
 tnx.i1l1 = subset(tnx.agg, industry=="1" & location=="1")
 tnx.i1l1$date = as.Date(tnx.i1l1$date)
 str(tnx.i1l1)
+boxplot(tnx.i1l1$monthly_amount, data=tnx.i1l1)
 
 
 ggplot(data = tnx.i1l1, aes(x = date, y = monthly_amount)) + geom_line(colour="skyblue", size=1.5) + scale_x_date(date_breaks="1 year", date_labels = "%b %y")
@@ -65,38 +67,55 @@ ggplot(data = tnx.i1l1, aes(x = date, y = monthly_amount)) + geom_line(colour="s
 #--------------------------------------
 library(lubridate)
 
-tnx.i1l1$month = month(tnx.i1l1$date)
-tnx.i1l1$monthseq = as.integer(rownames(tnx.i1l1))
+elapsed_months <- function(end_date, start_date) {
+  ed <- as.POSIXlt(end_date)
+  sd <- as.POSIXlt(start_date)
+  12 * (ed$year - sd$year) + (ed$mon - sd$mon)
+}
+#elapsed_months(as.Date("2018-05-01"), as.Date("2000-01-01"))
+getMonthSeq = function(mydate) {
+  elapsed_months(mydate, as.Date("2000-01-01"))
+}
+
+getMonthSeq(as.Date("2010-01-01"))
+
+
+#tnx.i1l1$month = month(tnx.i1l1$date)
+#tnx.i1l1$monthseq = as.integer(rownames(tnx.i1l1))
+tnx.i1l1$monthseq = getMonthSeq(tnx.i1l1$date)
 
   
 tnx.fit = lm(monthly_amount~monthseq, data=tnx.i1l1)
 summary(tnx.fit)
-#Residuals:
-#  Min     1Q Median     3Q    Max 
-#-28924  -7833   1853   7282  18696 
+# Residuals:
+#   Min     1Q Median     3Q    Max 
+# -28924  -7833   1853   7282  18696 
+# 
+# Coefficients:
+#   Estimate Std. Error t value Pr(>|t|)    
+# (Intercept)  23355.4    19660.2   1.188    0.241    
+# monthseq       801.7      109.5   7.321 3.42e-09 ***
+#   ---
+#   Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# Residual standard error: 10180 on 45 degrees of freedom
+# Multiple R-squared:  0.5436,	Adjusted R-squared:  0.5334 
+# F-statistic: 53.59 on 1 and 45 DF,  p-value: 3.419e-09
 
-#Coefficients:
-#               Estimate  Std. Error t value  Pr(>|t|)    
-#(Intercept)    147625.4     3019.2  48.895   < 2e-16 ***
-#  monthseq        801.7      109.5   7.321   3.42e-09 ***
-#  ---
-#  Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-#
-#Residual standard error: 10180 on 45 degrees of freedom
-#Multiple R-squared:  0.5436,	Adjusted R-squared:  0.5334 
-#F-statistic: 53.59 on 1 and 45 DF,  p-value: 3.419e-09
 
 
+
+#--------------------------------------
+#Task 3a
+#--------------------------------------
 plot(tnx.fit)
 plot(tnx.i1l1$monthseq, tnx.i1l1$monthly_amount)
 abline(tnx.fit, lwd=3, col="red")
 cor(tnx.i1l1$monthseq, tnx.i1l1$monthly_amount)
 
-#--------------------------------------
-#Task 3a
-#--------------------------------------
 #[1] 0.7372695 <- strong correlation
 # R^2 value = 0.5334 <- reasonable fit
+# R^2 means - 53% of the variance in monthly amount is explained by the month sequence
 
 #--------------------------------------
 #Task 3b
@@ -107,7 +126,7 @@ confint(tnx.fit, level=0.95)
 #   (Intercept) 141544.2949 153706.414
 # monthseq       581.1583   1022.325
 
-#?? MSE - measuring quality of fit. Compare the train MSE with the test MSE
+#?? MSE - measuring quality of fit. Compare the train MSE with the test MSE using different models
 train.mse = mean(tnx.fit$residuals^2)
 
 # or RSE - any prediction will be off by 10180
@@ -115,15 +134,27 @@ train.mse = mean(tnx.fit$residuals^2)
 #?? run a null hypothesis test
 # null can be rejected because of low p-value in model (ie. slope / Std Error)
 
+#assessing model accuracy
+# -RSE - sqrt(RSS / n-2)
+# -R^Squared (IE. 1-(RSS/TSS): RSS is sum of all residuals squared: TSS is sum((monthly_amount - average_monthly_amount)^2)
+#  -- rsquared is how close the data is to fit the regression line.
 
 #--------------------------------------
 #Task 3c
 # - predict amount for December 2016 (ie. monthseq=48)
 #--------------------------------------
-predict(tnx.fit, data.frame(monthseq=c(48)), interval="prediction")
+predict(tnx.fit, data.frame(monthseq=c(getMonthSeq("2016-12-01"))), interval="prediction")
 # fit      lwr      upr
 # 1 186108.9 164713.5 207504.4
 
+#check prediction
+trainpred = as.data.frame(predict(tnx.fit, tnx.i1l1, interval="prediction"))
+trainpred = merge(tnx.i1l1, trainpred, by="row.names")
+write.csv(trainpred, "trainingpred.csv")
+
+#R squared
+cor(trainpred$monthly_amount, trainpred$fit)^2
+cor(trainpred$monthly_amount, trainpred$monthseq)^2
 
 #--------------------------------------
 #Task 4
@@ -131,10 +162,121 @@ predict(tnx.fit, data.frame(monthseq=c(48)), interval="prediction")
 #--------------------------------------
 ##?? run predict on test data
 
+tnx.test = subset(tnx.agg, !(industry=="1" & location=="1"))
+tnx.test$date = as.Date(tnx.test$date)
+tnx.test$monthseq = getMonthSeq(tnx.test$date)
+tnx.test$rowid = as.integer(rownames(tnx.test))
+str(tnx.test)
+ 
+
+tempdf = NULL
+testpred = NULL
+fullpred = NULL
+
+for (i in unique(tnx.test$industry)) {
+  print(paste("Industry", i))
+  
+  for (l in unique(tnx.test$location)) {
+    print(paste("--location", l))
+    tempdf = NULL
+    tempdf = subset(tnx.test, industry==i & location==l)
+    if (nrow(tempdf) != 0 ) {
+      
+      print(nrow(tempdf))
+      
+      #get predictions per month  
+      testpred = predict(tnx.fit, newdata =tempdf, interval="prediction")
+      testpred = as.data.frame(testpred)
+      testpred$rowid = as.integer(row.names(testpred))
+      fullpred = rbind(fullpred, testpred)    
+      
+    } else {
+      print("------no data")
+    }
+  }
+}
+tnx.test = merge(tnx.test, fullpred, by="rowid", all.x = TRUE)
+tnx.test$date = as.Date(tnx.test$date)
+tnx.test$residual = tnx.test$monthly_amount - tnx.test$fit
+write.csv(tnx.test, "testresults.csv")
+
+
+tempdf = NULL
+indloc = NULL
+fullsummary = NULL
+decSeq = getMonthSeq("2016-12-01")
+for (i in unique(tnx.test$industry)) {
+  print(paste("Industry", i))
+  
+  for (l in unique(tnx.test$location)) {
+    
+    print(paste("--location", l))
+    tempdf = NULL
+    tempdf = subset(tnx.test, industry==i & location==l)
+    if (nrow(tempdf) != 0 ) {
+      
+      #summarise accuracy
+      indloc$industry = i
+      indloc$location = l
+      indloc$avg = mean(tempdf$monthly_amount)
+      indloc$tss = sum((tempdf$monthly_amount - indloc$avg)^2)
+      indloc$rss = sum(tempdf$residual^2)
+      indloc$ess = sum((tempdf$fit - indloc$avg)^2)
+      indloc$rsq = indloc$ess / indloc$tss
+      indloc$cor = cor(tempdf$monthly_amount, tempdf$fit)
+      
+      #--------------------------------------
+      #Task 5
+      # - Predict December 2016
+      #--------------------------------------
+      
+      decPred = as.data.frame(predict(tnx.fit, data.frame(monthseq=c(decSeq)), interval="prediction"))
+      indloc$decfit = decPred$fit
+      indloc$declwr = decPred$lwr
+      indloc$decupr = decPred$upr
+    
+      fullsummary = rbind(fullsummary, indloc)    
+      
+    } else {
+      print("------no data")
+    }
+  }
+}
+
+fullsummary = as.data.frame(fullsummary)
+rownames(fullsummary) = NULL
+str(fullsummary)
+write.csv(fullsummary, "fullsummary.csv")
+
+
+
 
 
 
 #------------------------------END--------------
+
+
+
+# Calculate mean female_unemployment: fe_mean. Print it
+fe_mean <- mean(unemployment$female_unemployment)
+fe_mean
+
+# Calculate total sum of squares: tss. Print it
+
+tss <- sum((unemployment$female_unemployment - fe_mean)^2)
+tss
+
+# Calculate residual sum of squares: rss. Print it
+rss <- sum(unemployment_model$residuals^2)
+rss
+
+# Calculate R-squared: rsq. Print it. Is it a good fit?
+rsq <- 1 - (rss/tss)
+rsq
+# Get R-squared from glance. Print it
+rsq_glance <- glance(unemployment_model)$r.squared
+rsq_glance
+
 
 
 
