@@ -92,7 +92,7 @@ summary(tnx.fit)
 # -28924  -7833   1853   7282  18696 
 # 
 # Coefficients:
-#   Estimate Std. Error t value Pr(>|t|)    
+#             Estimate Std. Error t value Pr(>|t|)    
 # (Intercept)  23355.4    19660.2   1.188    0.241    
 # monthseq       801.7      109.5   7.321 3.42e-09 ***
 #   ---
@@ -101,6 +101,22 @@ summary(tnx.fit)
 # Residual standard error: 10180 on 45 degrees of freedom
 # Multiple R-squared:  0.5436,	Adjusted R-squared:  0.5334 
 # F-statistic: 53.59 on 1 and 45 DF,  p-value: 3.419e-09
+
+install.packages("broom")
+library(broom)
+
+tnx.sum = glance(tnx.fit)
+tnx.sum$r.squared 
+tnx.sum$adj.r.squared
+tnx.sum$statistic
+tnx.sum$p.value
+#summary(tnx.fit)$coefficients[,4]   ##P-values
+#summary(tnx.fit)$r.squared          ##R squared values
+#summary(tnx.fit)$adj.r.squared        ##R squared values
+#summary(tnx.fit)$statistic
+#RSE: sqrt(sum(tnx.fit$residuals^2)/45)
+
+
 
 
 
@@ -172,6 +188,7 @@ str(tnx.test)
 tempdf = NULL
 testpred = NULL
 fullpred = NULL
+indloc.fit = NULL
 
 for (i in unique(tnx.test$industry)) {
   print(paste("Industry", i))
@@ -184,8 +201,14 @@ for (i in unique(tnx.test$industry)) {
       
       print(nrow(tempdf))
       
+      #run model for industry location
+      indloc.fit$industry = i
+      indloc.fit$location = l
+      indloc.fit$lm = lm(monthly_amount~monthseq, data=tempdf)
+      
+      
       #get predictions per month  
-      testpred = predict(tnx.fit, newdata =tempdf, interval="prediction")
+      testpred = predict(indloc.fit$lm, newdata =tempdf, interval="prediction")
       testpred = as.data.frame(testpred)
       testpred$rowid = as.integer(row.names(testpred))
       fullpred = rbind(fullpred, testpred)    
@@ -195,6 +218,9 @@ for (i in unique(tnx.test$industry)) {
     }
   }
 }
+
+str(indloc.fit)
+
 tnx.test = merge(tnx.test, fullpred, by="rowid", all.x = TRUE)
 tnx.test$date = as.Date(tnx.test$date)
 tnx.test$residual = tnx.test$monthly_amount - tnx.test$fit
@@ -204,6 +230,7 @@ write.csv(tnx.test, "testresults.csv")
 tempdf = NULL
 indloc = NULL
 fullsummary = NULL
+indloc.fit = NULL
 decSeq = getMonthSeq("2016-12-01")
 for (i in unique(tnx.test$industry)) {
   print(paste("Industry", i))
@@ -229,8 +256,11 @@ for (i in unique(tnx.test$industry)) {
       #Task 5
       # - Predict December 2016
       #--------------------------------------
+      indloc.fit$industry = i
+      indloc.fit$location = l
+      indloc.fit$lm = lm(monthly_amount~monthseq, data=tempdf)
       
-      decPred = as.data.frame(predict(tnx.fit, data.frame(monthseq=c(decSeq)), interval="prediction"))
+      decPred = as.data.frame(predict(indloc.fit$lm, data.frame(monthseq=c(decSeq)), interval="prediction"))
       indloc$decfit = decPred$fit
       indloc$declwr = decPred$lwr
       indloc$decupr = decPred$upr
@@ -243,10 +273,23 @@ for (i in unique(tnx.test$industry)) {
   }
 }
 
-fullsummary = as.data.frame(fullsummary)
-rownames(fullsummary) = NULL
-str(fullsummary)
-write.csv(fullsummary, "fullsummary.csv")
+fullsummarydf = as.data.frame(fullsummary)
+rownames(fullsummarydf) = NULL
+
+fullsummarydf$industry = unlist(fullsummarydf$industry, use.names=FALSE)
+fullsummarydf$location = unlist(fullsummarydf$location, use.names=FALSE)
+fullsummarydf$avg =unlist(fullsummarydf$avg, use.names=FALSE)
+fullsummarydf$tss= unlist(fullsummarydf$tss, use.names=FALSE)
+fullsummarydf$rss=unlist(fullsummarydf$rss, use.names=FALSE)
+fullsummarydf$ess=unlist(fullsummarydf$ess, use.names=FALSE)
+fullsummarydf$rsq=unlist(fullsummarydf$rsq, use.names=FALSE)
+fullsummarydf$cor=unlist(fullsummarydf$cor, use.names=FALSE)
+fullsummarydf$decfit=unlist(fullsummarydf$decfit, use.names=FALSE)
+fullsummarydf$declwr=unlist(fullsummarydf$declwr, use.names=FALSE)
+fullsummarydf$decupr=unlist(fullsummarydf$decupr, use.names=FALSE)
+
+str(fullsummarydf)
+write.csv(fullsummarydf, "fullsummary.csv")
 
 
 
@@ -254,31 +297,6 @@ write.csv(fullsummary, "fullsummary.csv")
 
 
 #------------------------------END--------------
-
-
-
-# Calculate mean female_unemployment: fe_mean. Print it
-fe_mean <- mean(unemployment$female_unemployment)
-fe_mean
-
-# Calculate total sum of squares: tss. Print it
-
-tss <- sum((unemployment$female_unemployment - fe_mean)^2)
-tss
-
-# Calculate residual sum of squares: rss. Print it
-rss <- sum(unemployment_model$residuals^2)
-rss
-
-# Calculate R-squared: rsq. Print it. Is it a good fit?
-rsq <- 1 - (rss/tss)
-rsq
-# Get R-squared from glance. Print it
-rsq_glance <- glance(unemployment_model)$r.squared
-rsq_glance
-
-
-
 
 lm.fit=lm(medv~lstat, data=Boston)
 lm.fit
