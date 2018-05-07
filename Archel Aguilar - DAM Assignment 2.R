@@ -40,10 +40,10 @@ tnx$location = as.factor(tnx$location)
 tnx$date = as.Date(tnx$date, format="%d/%m/%y")
 
 #--------------------------------------
-#Task 1 - aggregate data
+#Task 1 - Aggregate data - with mean on monthly_amount
 #--------------------------------------
 tnx.agg = aggregate(formula = monthly_amount ~ date:industry:location, data = tnx, FUN = mean)
-write.csv(tnx.agg, "monthlyAggregate.csv")
+write.csv(tnx.agg, "MonthlyAggregate.csv")
 head(tnx.agg, 20)
 str(tnx.agg)
 
@@ -63,7 +63,7 @@ boxplot(tnx.i1l1$monthly_amount, data=tnx.i1l1)
 ggplot(data = tnx.i1l1, aes(x = date, y = monthly_amount)) + geom_line(colour="skyblue", size=1.5) + scale_x_date(date_breaks="1 year", date_labels = "%b %y")
 
 #--------------------------------------
-#Task 3 - linear regression
+#Task 3 - train linear regression on industry 1 and location 1
 #--------------------------------------
 library(lubridate)
 
@@ -102,6 +102,9 @@ summary(tnx.fit)
 # Multiple R-squared:  0.5436,	Adjusted R-squared:  0.5334 
 # F-statistic: 53.59 on 1 and 45 DF,  p-value: 3.419e-09
 
+#--------------------------------------
+#Task 3a - check how well the model fist the data
+#--------------------------------------
 install.packages("broom")
 library(broom)
 
@@ -116,14 +119,6 @@ tnx.sum$p.value
 #summary(tnx.fit)$statistic
 #RSE: sqrt(sum(tnx.fit$residuals^2)/45)
 
-
-
-
-
-
-#--------------------------------------
-#Task 3a
-#--------------------------------------
 plot(tnx.fit)
 plot(tnx.i1l1$monthseq, tnx.i1l1$monthly_amount)
 abline(tnx.fit, lwd=3, col="red")
@@ -134,7 +129,7 @@ cor(tnx.i1l1$monthseq, tnx.i1l1$monthly_amount)
 # R^2 means - 53% of the variance in monthly amount is explained by the month sequence
 
 #--------------------------------------
-#Task 3b
+#Task 3b - evaluate accuracy 
 #--------------------------------------
 confint(tnx.fit, level=0.95)
 #?? confidence interval to measure accuracy. 95% confident that monthly_amount will increase between 581 and 1022 per month
@@ -157,7 +152,7 @@ train.mse = mean(tnx.fit$residuals^2)
 
 #--------------------------------------
 #Task 3c
-# - predict amount for December 2016 (ie. monthseq=48)
+# - predict amount for December 2016
 #--------------------------------------
 predict(tnx.fit, data.frame(monthseq=c(getMonthSeq("2016-12-01"))), interval="prediction")
 # fit      lwr      upr
@@ -166,7 +161,7 @@ predict(tnx.fit, data.frame(monthseq=c(getMonthSeq("2016-12-01"))), interval="pr
 #check prediction
 trainpred = as.data.frame(predict(tnx.fit, tnx.i1l1, interval="prediction"))
 trainpred = merge(tnx.i1l1, trainpred, by="row.names")
-write.csv(trainpred, "trainingpred.csv")
+write.csv(trainpred, "TrainingPrediction.csv")
 
 #R squared
 cor(trainpred$monthly_amount, trainpred$fit)^2
@@ -174,9 +169,8 @@ cor(trainpred$monthly_amount, trainpred$monthseq)^2
 
 #--------------------------------------
 #Task 4
-# - 
+# - Apply model to all industries and location
 #--------------------------------------
-##?? run predict on test data
 
 tnx.test = subset(tnx.agg, !(industry=="1" & location=="1"))
 tnx.test$date = as.Date(tnx.test$date)
@@ -242,23 +236,39 @@ for (i in unique(tnx.test$industry)) {
     tempdf = subset(tnx.test, industry==i & location==l)
     if (nrow(tempdf) != 0 ) {
       
+      
+      indloc.fit$industry = i
+      indloc.fit$location = l
+      indloc.fit$lm = lm(monthly_amount~monthseq, data=tempdf)
+      
+      #--------------------------------------
+      #Task 4a
+      # - Add accurancy measures
+      #--------------------------------------
+      
       #summarise accuracy
       indloc$industry = i
       indloc$location = l
-      indloc$avg = mean(tempdf$monthly_amount)
-      indloc$tss = sum((tempdf$monthly_amount - indloc$avg)^2)
-      indloc$rss = sum(tempdf$residual^2)
-      indloc$ess = sum((tempdf$fit - indloc$avg)^2)
-      indloc$rsq = indloc$ess / indloc$tss
-      indloc$cor = cor(tempdf$monthly_amount, tempdf$fit)
       
+      indloc$avg = mean(tempdf$monthly_amount)
+      indloc$c_tss = sum((tempdf$monthly_amount - indloc$avg)^2)
+      indloc$c_rss = sum(tempdf$residual^2)
+      indloc$c_ess = sum((tempdf$fit - indloc$avg)^2)
+      indloc$c_rsq = indloc$c_ess / indloc$c_tss
+      indloc$c_cor = cor(tempdf$monthly_amount, tempdf$fit)
+      
+      indloc.sum = glance(indloc.fit$lm)
+      
+      indloc$rsq = indloc.sum$r.squared
+      indloc$a_rsq = indloc.sum$adj.r.squared
+      indloc$fstat = indloc.sum$statistic
+      indloc$pval = indloc.sum$p.value
+      
+  
       #--------------------------------------
       #Task 5
       # - Predict December 2016
       #--------------------------------------
-      indloc.fit$industry = i
-      indloc.fit$location = l
-      indloc.fit$lm = lm(monthly_amount~monthseq, data=tempdf)
       
       decPred = as.data.frame(predict(indloc.fit$lm, data.frame(monthseq=c(decSeq)), interval="prediction"))
       indloc$decfit = decPred$fit
@@ -273,74 +283,67 @@ for (i in unique(tnx.test$industry)) {
   }
 }
 
+
+#clean up
 fullsummarydf = as.data.frame(fullsummary)
 rownames(fullsummarydf) = NULL
-
-fullsummarydf$industry = unlist(fullsummarydf$industry, use.names=FALSE)
-fullsummarydf$location = unlist(fullsummarydf$location, use.names=FALSE)
-fullsummarydf$avg =unlist(fullsummarydf$avg, use.names=FALSE)
-fullsummarydf$tss= unlist(fullsummarydf$tss, use.names=FALSE)
-fullsummarydf$rss=unlist(fullsummarydf$rss, use.names=FALSE)
-fullsummarydf$ess=unlist(fullsummarydf$ess, use.names=FALSE)
-fullsummarydf$rsq=unlist(fullsummarydf$rsq, use.names=FALSE)
-fullsummarydf$cor=unlist(fullsummarydf$cor, use.names=FALSE)
-fullsummarydf$decfit=unlist(fullsummarydf$decfit, use.names=FALSE)
-fullsummarydf$declwr=unlist(fullsummarydf$declwr, use.names=FALSE)
-fullsummarydf$decupr=unlist(fullsummarydf$decupr, use.names=FALSE)
+for (c in names(fullsummarydf)) {
+  fullsummarydf[c] = unlist(fullsummarydf[c], use.names=FALSE)
+}
 
 str(fullsummarydf)
-write.csv(fullsummarydf, "fullsummary.csv")
+write.csv(fullsummarydf, "IndustryLocationSummary.csv")
 
 
+#--------------------------------------
+#Task 4b
+# - Check worse performing industries (ie. industry 2/location 1, industry 1/location 6)
+#--------------------------------------
 
+#--------------------------------
+#INDUSTRY 2 @ LOCATION 1
+#--------------------------------
+tnx.i2l1 = subset(tnx.agg, industry=="2" & location=="1")
+tnx.i2l1$date = as.Date(tnx.i2l1$date)
+tnx.i2l1$monthseq = getMonthSeq(tnx.i2l1$date)
+str(tnx.i2l1)
+boxplot(tnx.i2l1$monthly_amount, data=tnx.i2l1)
 
+plot(tnx.i2l1$monthseq, tnx.i2l1$monthly_amount)
+
+tnx.i2l1.fit = lm(monthly_amount~monthseq, data=tnx.i2l1)
+summary(tnx.i2l1.fit)
+
+abline(tnx.i2l1.fit, lwd=3, col="red")
+cor(tnx.i2l1$monthseq, tnx.i2l1$monthly_amount)
+#[1] -0.05761972 <-- close to zero
+
+ggplot(data = tnx.i2l1, aes(x = date, y = monthly_amount)) + geom_line(colour="skyblue", size=1.5) + scale_x_date(date_breaks="1 year", date_labels = "%b %y")
+#transaction amount does not increase linearly
+
+#--------------------------------
+#INDUSTRY 1 @ LOCATION 6
+#--------------------------------
+tnx.i1l6 = subset(tnx.agg, industry=="1" & location=="6")
+tnx.i1l6$date = as.Date(tnx.i1l6$date)
+tnx.i1l6$monthseq = getMonthSeq(tnx.i1l6$date)
+str(tnx.i1l6)
+boxplot(tnx.i1l6$monthly_amount, data=tnx.i1l6)
+
+plot(tnx.i1l6$monthseq, tnx.i1l6$monthly_amount)
+
+tnx.i1l6.fit = lm(monthly_amount~monthseq, data=tnx.i1l6)
+summary(tnx.i1l6.fit)
+
+abline(tnx.i1l6.fit, lwd=3, col="red")
+cor(tnx.i1l6$monthseq, tnx.i1l6$monthly_amount)
+#[1] 0.03300488 <-- close to zero
+
+ggplot(data = tnx.i1l6, aes(x = date, y = monthly_amount)) + geom_line(colour="skyblue", size=1.5) + scale_x_date(date_breaks="1 year", date_labels = "%b %y")
+#transaction amount does not increase linearly
+#could be location was closed for 6 months. Maybe exclude those events.
 
 
 #------------------------------END--------------
 
-lm.fit=lm(medv~lstat, data=Boston)
-lm.fit
-
-
-#on the basis of the residual plots there is some evidence for non-linearity.
-#leverage statistics can be computed for any number of predictors using hatvalues()
-plot(hatvalues(lm.fit))
-#tells you which obervation has the largest leverage statistic ie. 375
-maxlstat = which.max(hatvalues(lm.fit))
-Boston[maxlstat,] #returns row
-#you can also tag the extreme observation via identify
-myval = identify(Boston$lstat, Boston$medv)
-
-
-#Findings:
-#1. is there a relationship?
-# - F-statistic is well over 1
-# - p-value is 2e-16 ie. 0.000...2 (16 zeros)
-#
-#2. how strong is the relationship
-# - R2 is 0.5432 (not a strong relationship because R^2 is like a p-value)
-# - RSE (average figure for all errors) is 6.216. Means median house value deviates by $6216 ie 6,216/22,532 = 27% 
-mean(Boston$medv)
-summary(Boston$lstat)
-# to obtain confidence interval for the co-efficients you can use the confin() command
-# note confidence interval is 2*SE(coeff)
-confint(lm.fit)
-
-#predict function can be used to produce confidence intervals and prediction intervals for the prediction of medv for a given value of lstat
-predict(lm.fit, data.frame(lstat=c(5,10,15)), interval="confidence")
-#fit      lwr      upr
-#29.80359 29.00741 30.59978 <- when lstat=5 
-#25.05335 24.47413 25.63256 <- when lstat=10
-#20.30310 19.73159 20.87461 <- when lstat=15
-#
-# when lstat = 10 a 95% confidence interval is (24.47, 25.63)
-
-predict(lm.fit, data.frame(lstat=c(5,10,15)), interval="prediction")
-#fit       lwr      upr
-#29.80359 17.565675 42.04151 <- when lstat=5
-#25.05335 12.827626 37.27907 <- when lstat=10
-#20.30310  8.077742 32.52846 <- when lstat=15
-#
-# when lstat = 10 a 95% prediction interval is (12.82, 37.27)
- 
 
