@@ -23,7 +23,7 @@ rm(list=ls())
 install.packages("ISLR")
 library(ISLR)
 
-setwd("C:/Personal/UTS/R-References/R-references-Git/DAM-Assignment-2")
+setwd("C:/Users/arche/Documents/UTS/R-References/R-references-Git/DAM-Assignment-2")
 getwd()
 
 tnx = read.csv("transactions.csv")
@@ -92,6 +92,57 @@ ggplot(data = tnx.i1l1, aes(x = as.Date(date), y = monthly_amount)) + geom_line(
 #Task 3 - train linear regression on industry 1 and location 1
 #--------------------------------------
 
+tnx.fit = lm(monthly_amount~monthseq, data=tnx.i1l1)
+summary(tnx.fit)
+# Call:
+#   lm(formula = monthly_amount ~ monthseq, data = tnx.i1l1)
+# 
+# Residuals:
+#   Min     1Q Median     3Q    Max 
+# -28924  -7833   1853   7282  18696 
+# 
+# Coefficients:
+#   Estimate Std. Error t value Pr(>|t|)    
+# (Intercept)  23355.4    19660.2   1.188    0.241    
+# monthseq       801.7      109.5   7.321 3.42e-09 ***
+#   ---
+#   Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# Residual standard error: 10180 on 45 degrees of freedom
+# Multiple R-squared:  0.5436,	Adjusted R-squared:  0.5334 
+# F-statistic: 53.59 on 1 and 45 DF,  p-value: 3.419e-09
+
+#MSE - measuring quality of fit. Compare the train MSE with the test MSE using different models
+mean(tnx.fit$residuals^2)
+#[1] 99,314,297
+
+
+tnx.fit = lm(monthly_amount~monthseq + Season, data=tnx.i1l1)
+summary(tnx.fit)
+# Call:
+#   lm(formula = monthly_amount ~ monthseq + Season, data = tnx.i1l1)
+# 
+# Residuals:
+#   Min       1Q   Median       3Q      Max 
+# -18906.5  -4405.1   -822.6   5646.5  15955.5 
+# 
+# Coefficients:
+#   Estimate Std. Error t value Pr(>|t|)    
+# (Intercept)   22554.89   17511.74   1.288 0.204802    
+# monthseq        753.73      98.46   7.655 1.71e-09 ***
+#   SeasonSeason2 13434.72    3741.53   3.591 0.000857 ***
+#   SeasonSeason3 10654.42    3763.02   2.831 0.007086 ** 
+#   SeasonSeason4 12702.95    3807.38   3.336 0.001784 ** 
+#   ---
+#   Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# Residual standard error: 8958 on 42 degrees of freedom
+# Multiple R-squared:  0.6704,	Adjusted R-squared:  0.639 
+# F-statistic: 21.36 on 4 and 42 DF,  p-value: 1.137e-09
+mean(tnx.fit$residuals^2)
+#[1] 71,714,910
+
+
 tnx.fit = lm(monthly_amount~monthseq:Season, data=tnx.i1l1)
 summary(tnx.fit)
 # Call:
@@ -114,6 +165,13 @@ summary(tnx.fit)
 # Residual standard error: 8921 on 42 degrees of freedom
 # Multiple R-squared:  0.6732,	Adjusted R-squared:  0.642 
 # F-statistic: 21.63 on 4 and 42 DF,  p-value: 9.571e-10
+mean(tnx.fit$residuals^2)
+#[1] 71,115,531
+
+#install.packages("jtools")
+#library(jtools)
+#interact_plot(tnx.fit, pred = "monthseq", modx="monthseq")
+#cat_plot(tnx.fit, pred="Season", modx = "date")
 
 #--------------------------------------
 #Task 3a - check how well the model fist the data
@@ -160,6 +218,7 @@ confint(tnx.fit, level=0.95)
 
 #MSE - measuring quality of fit. Compare the train MSE with the test MSE using different models
 train.mse = mean(tnx.fit$residuals^2)
+#cannot compare MSE with other locations due to transaction amount variance between industries and locations.
 
 
 #RSE - Residual Standard Error is measure of the quality of a linear regression fit
@@ -172,7 +231,7 @@ train.mse = mean(tnx.fit$residuals^2)
 #Null can be rejected because of low p-value in model (ie. slope / Std Error)
 #p-value: 3.419e-09 <-- close to 0
 
-#R^Squared - how well the model fits the data
+#R^Squared - how well the model fits the data (goodness of fit)
 #R^Squared (IE. 1-(RSS/TSS): RSS is sum of all residuals squared: TSS is sum((monthly_amount - average_monthly_amount)^2)
 #R^Squared is how close the data is to fit the regression line.
 #Adjusted R-squared:  0.5334 
@@ -287,6 +346,7 @@ for (i in unique(tnx.test$industry)) {
       indloc$avg = mean(tempdf$monthly_amount)
       indloc$c_tss = sum((tempdf$monthly_amount - indloc$avg)^2)
       indloc$c_rss = sum(tempdf$residual^2)
+      indloc$c_mse = mean(tempdf$residual^2)
       indloc$c_ess = sum((tempdf$fit - indloc$avg)^2)
       indloc$c_rsq = indloc$c_ess / indloc$c_tss
       indloc$c_cor = cor(tempdf$monthly_amount, tempdf$fit)

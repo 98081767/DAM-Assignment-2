@@ -45,6 +45,7 @@ cv.fit_ridge = cv.glmnet(x, y, family = 'binomial', alpha = 0)
 plot(cv.fit_ridge)
 cv.fit_ridge$lambda.min
 cv.fit_ridge$lambda.1se
+#shows the coefficents
 coef(cv.fit_ridge, s = cv.fit_ridge$lambda.min)
 
 prediction_ridge = predict(cv.fit_ridge$glmnet.fit, newx = model.matrix(~ ., testing[, -1]), 
