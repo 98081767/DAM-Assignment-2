@@ -28,6 +28,7 @@ names(pr_out)
 # The 'rotation' output shows a view of the 'coefficients' of the principal components 
 pr_out$rotation
 # biplot outputs a plot of the first two principal components with the variables plotted
+
 biplot(pr_out, scale=0)
  
 # We will now create the scree plot by converting the standard deviation to a variance
@@ -62,7 +63,7 @@ validationplot(pcr_fit, val.type = "MSEP")
 # as well as the % variance explained in summary(pcr.fit)
 
 # choose a number for the number of components
-ncomp = 7
+ncomp = 2 #<-based on plot looks two components look like it covers most variance.
 
 # output predictions
 pcr_pred = predict(pcr_fit, Hitters, ncomp = ncomp)
