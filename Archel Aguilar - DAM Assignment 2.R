@@ -65,7 +65,7 @@ getMonthSeq(as.Date("2010-01-01"))
 
 tnx.agg$date = as.Date(tnx.agg$date)
 tnx.agg$monthseq = getMonthSeq(tnx.agg$date)
-
+tnx.agg$year = year(tnx.agg$date)
 
 tnx.agg$Season = "Season1"
 tnx.agg$Season[which(month(tnx.agg$date)==12 | month(tnx.agg$date)==1 | month(tnx.agg$date)==2)] = "Season1"
@@ -73,7 +73,7 @@ tnx.agg$Season[which(month(tnx.agg$date)==3 | month(tnx.agg$date)==4 | month(tnx
 tnx.agg$Season[which(month(tnx.agg$date)==6 | month(tnx.agg$date)==7 | month(tnx.agg$date)==8)] = "Season3"
 tnx.agg$Season[which(month(tnx.agg$date)==9 | month(tnx.agg$date)==10 | month(tnx.agg$date)==11)] = "Season4"
 
-
+str(tnx.agg)
 
 #--------------------------------------
 #Task 2 - plot line
@@ -92,11 +92,10 @@ ggplot(data = tnx.i1l1, aes(x = as.Date(date), y = monthly_amount)) + geom_line(
 #Task 3 - train linear regression on industry 1 and location 1
 #--------------------------------------
 
-tnx.fit = lm(monthly_amount~monthseq, data=tnx.i1l1)
-summary(tnx.fit)
-# Call:
-#   lm(formula = monthly_amount ~ monthseq, data = tnx.i1l1)
-# 
+#model 1
+#xmodel = "monthly_amount~monthseq"
+#MSE = 99,314,297
+
 # Residuals:
 #   Min     1Q Median     3Q    Max 
 # -28924  -7833   1853   7282  18696 
@@ -112,16 +111,10 @@ summary(tnx.fit)
 # Multiple R-squared:  0.5436,	Adjusted R-squared:  0.5334 
 # F-statistic: 53.59 on 1 and 45 DF,  p-value: 3.419e-09
 
-#MSE - measuring quality of fit. Compare the train MSE with the test MSE using different models
-mean(tnx.fit$residuals^2)
-#[1] 99,314,297
+#model 2 
+#xmodel = "monthly_amount~monthseq + Season"
+#MSE = 71,714,910
 
-
-tnx.fit = lm(monthly_amount~monthseq + Season, data=tnx.i1l1)
-summary(tnx.fit)
-# Call:
-#   lm(formula = monthly_amount ~ monthseq + Season, data = tnx.i1l1)
-# 
 # Residuals:
 #   Min       1Q   Median       3Q      Max 
 # -18906.5  -4405.1   -822.6   5646.5  15955.5 
@@ -139,15 +132,11 @@ summary(tnx.fit)
 # Residual standard error: 8958 on 42 degrees of freedom
 # Multiple R-squared:  0.6704,	Adjusted R-squared:  0.639 
 # F-statistic: 21.36 on 4 and 42 DF,  p-value: 1.137e-09
-mean(tnx.fit$residuals^2)
-#[1] 71,714,910
 
+#model 3
+xmodel = "monthly_amount~monthseq:Season"
+#MSE = 71,115,531
 
-tnx.fit = lm(monthly_amount~monthseq:Season, data=tnx.i1l1)
-summary(tnx.fit)
-# Call:
-#   lm(formula = monthly_amount ~ monthseq:Season, data = tnx.i1l1)
-# 
 # Residuals:
 #   Min     1Q Median     3Q    Max 
 # -17910  -4602  -1088   5482  17008 
@@ -165,8 +154,38 @@ summary(tnx.fit)
 # Residual standard error: 8921 on 42 degrees of freedom
 # Multiple R-squared:  0.6732,	Adjusted R-squared:  0.642 
 # F-statistic: 21.63 on 4 and 42 DF,  p-value: 9.571e-10
+
+
+#model 4
+#xmodel = "monthly_amount~monthseq:Season + year:Season"
+#MSE = 69,466,494
+# Residuals:
+#   Min       1Q   Median       3Q      Max 
+# -17080.6  -6066.1    568.1   6946.3  18024.1 
+# 
+# Coefficients:
+#                           Estimate Std. Error t value Pr(>|t|)
+# (Intercept)            -2549498.7 13793802.7  -0.185    0.854
+# monthseq:SeasonSeason1      511.0      583.7   0.875    0.387
+# monthseq:SeasonSeason2      594.0      606.8   0.979    0.334
+# monthseq:SeasonSeason3      645.4      606.8   1.064    0.294
+# monthseq:SeasonSeason4      816.2      606.9   1.345    0.187
+# SeasonSeason1:year         1298.0     6894.9   0.188    0.852
+# SeasonSeason2:year         1297.5     6897.6   0.188    0.852
+# SeasonSeason3:year         1291.7     6898.5   0.187    0.852
+# SeasonSeason4:year         1277.4     6899.3   0.185    0.854
+# 
+# Residual standard error: 9269 on 38 degrees of freedom
+# Multiple R-squared:  0.6807,	Adjusted R-squared:  0.6135 
+# F-statistic: 10.13 on 8 and 38 DF,  p-value: 1.977e-07
+
+
+tnx.fit = lm(xmodel, data=tnx.i1l1)
+summary(tnx.fit)
+
+#MSE - measuring quality of fit. Compare the train MSE with the test MSE using different models
 mean(tnx.fit$residuals^2)
-#[1] 71,115,531
+
 
 #install.packages("jtools")
 #library(jtools)
@@ -291,7 +310,7 @@ for (i in unique(tnx.test$industry)) {
       #run model for industry location
       indloc.fit$industry = i
       indloc.fit$location = l
-      indloc.fit$lm = lm(monthly_amount~monthseq:Season, data=tempdf)
+      indloc.fit$lm = lm(xmodel, data=tempdf)
       
       
       #get predictions per month  
@@ -332,7 +351,7 @@ for (i in unique(tnx.test$industry)) {
       
       indloc.fit$industry = i
       indloc.fit$location = l
-      indloc.fit$lm = lm(monthly_amount~monthseq:Season, data=tempdf)
+      indloc.fit$lm = lm(xmodel, data=tempdf)
       
       #--------------------------------------
       #Task 4a
@@ -346,7 +365,7 @@ for (i in unique(tnx.test$industry)) {
       indloc$avg = mean(tempdf$monthly_amount)
       indloc$c_tss = sum((tempdf$monthly_amount - indloc$avg)^2)
       indloc$c_rss = sum(tempdf$residual^2)
-      indloc$c_mse = mean(tempdf$residual^2)
+      #indloc$c_mse = mean(tempdf$residual^2)
       indloc$c_ess = sum((tempdf$fit - indloc$avg)^2)
       indloc$c_rsq = indloc$c_ess / indloc$c_tss
       indloc$c_cor = cor(tempdf$monthly_amount, tempdf$fit)
@@ -405,7 +424,7 @@ str(tnx.i2l1)
 boxplot(tnx.i2l1$monthly_amount/1000, data=tnx.i2l1)
 hist(tnx.i2l1$monthly_amount/1000)
 
-tnx.i2l1.fit = lm(monthly_amount~monthseq:Season, data=tnx.i2l1)
+tnx.i2l1.fit = lm(xmodel, data=tnx.i2l1)
 summary(tnx.i2l1.fit)
 # Call:
 #   lm(formula = monthly_amount ~ monthseq:Season, data = tnx.i2l1)
@@ -448,7 +467,7 @@ str(tnx.i3l1)
 boxplot(tnx.i3l1$monthly_amount/1000, data=tnx.i3l1)
 hist(tnx.i3l1$monthly_amount/1000)
 
-tnx.i3l1.fit = lm(monthly_amount~monthseq:Season, data=tnx.i3l1)
+tnx.i3l1.fit = lm(xmodel, data=tnx.i3l1)
 summary(tnx.i3l1.fit)
 # Call:
 #   lm(formula = monthly_amount ~ monthseq:Season, data = tnx.i3l1)
@@ -481,6 +500,50 @@ ggplot(data = tnx.i3l1, aes(x = date, y = monthly_amount)) + geom_line(colour="s
 #could be location was closed for 6 months. Maybe exclude those events.
 
 
-#------------------------------END--------------
+#--------------------------------
+#INDUSTRY 5 @ LOCATION 5 - OUTLIER EXAMPLE
+#--------------------------------
+tnx.i5l5 = subset(tnx.agg, industry=="5" & location=="5")
+tnx.i5l5$date = as.Date(tnx.i5l5$date)
+tnx.i5l5$year = year(tnx.i5l5$date)
+tnx.i5l5$month = month(tnx.i5l5$date)
+#year(tnx.i5l5$date)
+#tnx.i5l5$monthseq = getMonthSeq(tnx.i5l5$date)
+str(tnx.i5l5)
+boxplot(tnx.i5l5$monthly_amount/1000, data=tnx.i5l5)
+hist(tnx.i5l5$monthly_amount/1000)
 
+xmodel
+tnx.i5l5.fit = lm(xmodel, data=tnx.i5l5)
+summary(tnx.i5l5.fit)
+# 
+# Residuals:
+#   Min      1Q  Median      3Q     Max 
+# -107124  -23385   -7830   10887  446808 
+# 
+# Coefficients:
+#                           Estimate Std. Error t value Pr(>|t|)  
+#   (Intercept)            -125625.9   157392.5  -0.798   0.4294  
+#   monthseq:SeasonSeason1    1839.1      892.6   2.060   0.0457 *
+#   monthseq:SeasonSeason2    1893.3      893.1   2.120   0.0401 *
+#   monthseq:SeasonSeason3    1933.1      878.3   2.201   0.0334 *
+#   monthseq:SeasonSeason4    2097.2      864.1   2.427   0.0197 *
+#   ---
+#   Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# Residual standard error: 77460 on 41 degrees of freedom
+# Multiple R-squared:  0.1737,	Adjusted R-squared:  0.09313 
+# F-statistic: 2.155 on 4 and 41 DF,  p-value: 0.09121
+
+plot(tnx.i5l5$monthseq, tnx.i5l5$monthly_amount)
+abline(tnx.i5l5.fit, lwd=3, col="red")
+cor(tnx.i5l5$monthseq, tnx.i5l5$monthly_amount)
+#0.3580094
+
+
+ggplot(data = tnx.i5l5, aes(x = date, y = monthly_amount)) + geom_line(colour="skyblue", size=1.5) + scale_x_date(date_breaks="1 year", date_labels = "%b %y")
+#data has one major outlier
+boxplot(tnx.i5l5$monthly_amount)
+
+#------------------------------END--------------
 
