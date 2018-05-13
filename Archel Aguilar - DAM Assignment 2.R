@@ -47,6 +47,9 @@ write.csv(tnx.agg, "MonthlyAggregate.csv")
 head(tnx.agg, 20)
 str(tnx.agg)
 
+boxplot(monthly_amount/1000~industry:location, data=tnx.agg, las=2, horizontal=TRUE, ylab="Industry Locations", xlab="Monthly Amount ($,000s)")
+
+
 install.packages("lubridate")
 library(lubridate)
 
@@ -72,6 +75,7 @@ tnx.agg$Season[which(month(tnx.agg$date)==12 | month(tnx.agg$date)==1 | month(tn
 tnx.agg$Season[which(month(tnx.agg$date)==3 | month(tnx.agg$date)==4 | month(tnx.agg$date)==5)] = "Season2"
 tnx.agg$Season[which(month(tnx.agg$date)==6 | month(tnx.agg$date)==7 | month(tnx.agg$date)==8)] = "Season3"
 tnx.agg$Season[which(month(tnx.agg$date)==9 | month(tnx.agg$date)==10 | month(tnx.agg$date)==11)] = "Season4"
+
 
 str(tnx.agg)
 
@@ -180,6 +184,10 @@ xmodel = "monthly_amount~monthseq:Season"
 # F-statistic: 10.13 on 8 and 38 DF,  p-value: 1.977e-07
 
 
+
+#tnx.i1l1$month = month(tnx.i1l1$date)
+#xmodel = "monthly_amount~month:Season"
+
 tnx.fit = lm(xmodel, data=tnx.i1l1)
 summary(tnx.fit)
 
@@ -243,7 +251,7 @@ train.mse = mean(tnx.fit$residuals^2)
 #RSE - Residual Standard Error is measure of the quality of a linear regression fit
 #RSE is the average of residuals  (RSS)
 #RSE - sqrt(RSS / n-2)
-#Residual standard error: 10180 - any prediction will be off by 10180
+#Residual standard error: 8921 - any prediction will be off by 8921
 
 
 #Null hypothesis test
@@ -260,12 +268,10 @@ train.mse = mean(tnx.fit$residuals^2)
 #Task 3c
 # - predict amount for December 2016 across different seasons
 #--------------------------------------
-predict(tnx.fit, data.frame(monthseq=c(getMonthSeq("2016-12-01")), Season=c("Season1", "Season2", "Season3", "Season4")), interval="prediction")
+predict(tnx.fit, data.frame(monthseq=c(getMonthSeq("2016-12-01")), Season=c("Season1")), interval="prediction")
 #fit      lwr      upr
 #1 173946.1 154164.5 193727.6
-#2 189441.3 169838.5 209044.2
-#3 186314.9 166900.9 205728.9
-#4 188745.0 169493.0 207996.9
+
 
 #check prediction
 trainpred = as.data.frame(predict(tnx.fit, tnx.i1l1, interval="prediction"))
@@ -420,9 +426,11 @@ write.csv(fullsummarydf, "IndustryLocationSummary.csv")
 tnx.i2l1 = subset(tnx.agg, industry=="2" & location=="1")
 tnx.i2l1$date = as.Date(tnx.i2l1$date)
 #tnx.i2l1$monthseq = getMonthSeq(tnx.i2l1$date)
+tnx.i2l1$monthly_amount_t = tnx.i2l1$monthly_amount/1000
+
 str(tnx.i2l1)
-boxplot(tnx.i2l1$monthly_amount/1000, data=tnx.i2l1)
-hist(tnx.i2l1$monthly_amount/1000)
+boxplot(tnx.i2l1$monthly_amount_t, data=tnx.i2l1)
+hist(tnx.i2l1$monthly_amount_t)
 
 tnx.i2l1.fit = lm(xmodel, data=tnx.i2l1)
 summary(tnx.i2l1.fit)
@@ -454,7 +462,7 @@ abline(tnx.i2l1.fit, lwd=3, col="red")
 cor(tnx.i2l1$monthseq, tnx.i2l1$monthly_amount)
 #[1] -0.05761972 <-- close to zero
 
-ggplot(data = tnx.i2l1, aes(x = date, y = monthly_amount)) + geom_line(colour="skyblue", size=1.5) + scale_x_date(date_breaks="1 year", date_labels = "%b %y")
+ggplot(data = tnx.i2l1, aes(x = date, y = monthly_amount_t)) + geom_line(colour="skyblue", size=1.5) + scale_x_date(date_breaks="1 year", date_labels = "%b %y") + labs(y="Monthly Amount ($000s)")
 #transaction amount does not increase linearly - could be quadratic
 
 #--------------------------------
@@ -463,6 +471,7 @@ ggplot(data = tnx.i2l1, aes(x = date, y = monthly_amount)) + geom_line(colour="s
 tnx.i3l1 = subset(tnx.agg, industry=="3" & location=="1")
 tnx.i3l1$date = as.Date(tnx.i3l1$date)
 #tnx.i3l1$monthseq = getMonthSeq(tnx.i3l1$date)
+tnx.i3l1$monthly_amount_t = tnx.i3l1$monthly_amount/1000
 str(tnx.i3l1)
 boxplot(tnx.i3l1$monthly_amount/1000, data=tnx.i3l1)
 hist(tnx.i3l1$monthly_amount/1000)
@@ -495,7 +504,7 @@ abline(tnx.i3l1.fit, lwd=3, col="red")
 cor(tnx.i3l1$monthseq, tnx.i3l1$monthly_amount)
 #[1] 0.153416
 
-ggplot(data = tnx.i3l1, aes(x = date, y = monthly_amount)) + geom_line(colour="skyblue", size=1.5) + scale_x_date(date_breaks="1 year", date_labels = "%b %y")
+ggplot(data = tnx.i3l1, aes(x = date, y = monthly_amount_t)) + geom_line(colour="skyblue", size=1.5) + scale_x_date(date_breaks="1 year", date_labels = "%b %y") + labs(y="Monthly Amount ($000s)")
 #transaction amount does not increase linearly - quadratic
 #could be location was closed for 6 months. Maybe exclude those events.
 
@@ -507,11 +516,12 @@ tnx.i5l5 = subset(tnx.agg, industry=="5" & location=="5")
 tnx.i5l5$date = as.Date(tnx.i5l5$date)
 tnx.i5l5$year = year(tnx.i5l5$date)
 tnx.i5l5$month = month(tnx.i5l5$date)
+tnx.i5l5$monthly_amount_t = tnx.i5l5$monthly_amount/1000
 #year(tnx.i5l5$date)
 #tnx.i5l5$monthseq = getMonthSeq(tnx.i5l5$date)
 str(tnx.i5l5)
-boxplot(tnx.i5l5$monthly_amount/1000, data=tnx.i5l5)
-hist(tnx.i5l5$monthly_amount/1000)
+boxplot(tnx.i5l5$monthly_amount_t, data=tnx.i5l5)
+hist(tnx.i5l5$monthly_amount_t)
 
 xmodel
 tnx.i5l5.fit = lm(xmodel, data=tnx.i5l5)
@@ -541,9 +551,55 @@ cor(tnx.i5l5$monthseq, tnx.i5l5$monthly_amount)
 #0.3580094
 
 
-ggplot(data = tnx.i5l5, aes(x = date, y = monthly_amount)) + geom_line(colour="skyblue", size=1.5) + scale_x_date(date_breaks="1 year", date_labels = "%b %y")
+ggplot(data = tnx.i5l5, aes(x = date, y = monthly_amount_t)) + geom_line(colour="skyblue", size=1.5) + scale_x_date(date_breaks="1 year", date_labels = "%b %y") + labs(y="Monthly Amount ($000s)")
 #data has one major outlier
 boxplot(tnx.i5l5$monthly_amount)
+
+#--------------------------------
+#INDUSTRY 10 @ LOCATION 3
+#--------------------------------
+tnx.i10l3 = subset(tnx.agg, industry=="10" & location=="3")
+tnx.i10l3$date = as.Date(tnx.i10l3$date)
+tnx.i10l3$year = year(tnx.i10l3$date)
+tnx.i10l3$month = month(tnx.i10l3$date)
+tnx.i10l3$monthly_amount_t = tnx.i10l3$monthly_amount/1000
+#year(tnx.i10l3$date)
+#tnx.i10l3$monthseq = getMonthSeq(tnx.i10l3$date)
+str(tnx.i10l3)
+boxplot(tnx.i10l3$monthly_amount_t, data=tnx.i10l3)
+hist(tnx.i10l3$monthly_amount_t)
+
+xmodel
+tnx.i10l3.fit = lm(xmodel, data=tnx.i10l3)
+summary(tnx.i10l3.fit)
+# Residuals:
+#   Min     1Q Median     3Q    Max 
+# -3824  -2100      3   1213   4852 
+# 
+# Coefficients:
+#   Estimate Std. Error t value Pr(>|t|)    
+# (Intercept)            460676.1    60596.7   7.602 0.000126 ***
+#   monthseq:SeasonSeason1  -2350.3      378.6  -6.209 0.000442 ***
+#   monthseq:SeasonSeason2  -2332.0      381.3  -6.116 0.000483 ***
+#   monthseq:SeasonSeason3  -2326.5      374.2  -6.217 0.000438 ***
+#   monthseq:SeasonSeason4  -2306.6      367.4  -6.277 0.000413 ***
+#   ---
+#   Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# Residual standard error: 3383 on 7 degrees of freedom
+# Multiple R-squared:  0.8801,	Adjusted R-squared:  0.8116 
+# F-statistic: 12.85 on 4 and 7 DF,  p-value: 0.002434
+
+plot(tnx.i10l3$monthseq, tnx.i10l3$monthly_amount)
+abline(tnx.i10l3.fit, lwd=3, col="red")
+cor(tnx.i10l3$monthseq, tnx.i10l3$monthly_amount)
+#0.3580094
+
+
+ggplot(data = tnx.i10l3, aes(x = date, y = monthly_amount_t)) + geom_line(colour="skyblue", size=1.5) + scale_x_date(date_breaks="1 year", date_labels = "%b %y") + labs(y="Monthly Amount ($000s)")
+#data has one major outlier
+boxplot(tnx.i10l3$monthly_amount)
+
 
 #------------------------------END--------------
 
