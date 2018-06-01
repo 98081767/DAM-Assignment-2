@@ -14,6 +14,16 @@
 #
 # Objective
 #   - Predict for monthly_amount next month
+#
+# Assignment Feedback: 
+#   - Your approach to modelling seasonality is reasonable, but using month instead of quarter would have enabled you to capture more detail. 
+#       Training and testing sets need to be chosen more carefully. Given that each industry/location combo has its own characteristics, 
+#       one needs to pick train and test datasets per combination. 
+#       One way to do this is to use the first 36 months (for a given combo) as train and tjhe rest as test. 
+#       This gives the algorithm enough data to train a sensible model while leaving you with an adequate testing sample.
+#   - Notes: 
+#       I should have created a training-test split for the first 36 months on each industry/location rather than using industry1/Location1 as the test set.
+#       The prediction should have been applied on the test data
 #-----------------------------------------
 
 
@@ -24,6 +34,8 @@ install.packages("ISLR")
 library(ISLR)
 
 setwd("C:/Users/arche/Documents/UTS/R-References/R-references-Git/DAM-Assignment-2")
+#setwd("C:/Personal/UTS/R-References/R-references-Git/DAM-Assignment-2")
+
 getwd()
 
 tnx = read.csv("transactions.csv")
@@ -599,6 +611,7 @@ cor(tnx.i10l3$monthseq, tnx.i10l3$monthly_amount)
 ggplot(data = tnx.i10l3, aes(x = date, y = monthly_amount_t)) + geom_line(colour="skyblue", size=1.5) + scale_x_date(date_breaks="1 year", date_labels = "%b %y") + labs(y="Monthly Amount ($000s)")
 #data has one major outlier
 boxplot(tnx.i10l3$monthly_amount)
+
 
 
 #------------------------------END--------------
