@@ -24,6 +24,12 @@
 #   - Notes: 
 #       I should have created a training-test split for the first 36 months on each industry/location rather than using industry1/Location1 as the test set.
 #       The prediction should have been applied on the test data
+#     - I also could have showed a line chart to compare actuals from test data and the prediction.
+#       eg.
+#       # temp contains the aggregate data for industry 1 and location 1
+#         plot(temp$monthly_amount, type = "l")
+#         lines(temp$prediction, col = "red")
+#         plot(temp$prediction, col = "red", type = "l")
 #-----------------------------------------
 
 
